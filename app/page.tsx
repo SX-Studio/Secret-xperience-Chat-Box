@@ -1,16 +1,18 @@
+import Link from 'next/link';
+
 export default function Home() {
   return (
-    <main style={{ maxWidth: 640, margin: '0 auto', padding: '64px 24px' }}>
-      <p style={{ fontFamily: 'monospace', letterSpacing: '0.18em', color: 'var(--ink-2)', textTransform: 'uppercase', fontSize: 12 }}>
-        Content Box
+    <div className="center">
+      <p className="eyebrow">Content Box</p>
+      <h1>Temporary content, shared boxes.</h1>
+      <p className="muted">
+        Creators drop content into a shared Box. Members browse one feed and rent for 24 hours.
+        Sign in with your phone number to continue.
       </p>
-      <h1 style={{ fontSize: 34, lineHeight: 1.1, margin: '8px 0 16px' }}>
-        Phase 1 — Identity &amp; Box foundation
-      </h1>
-      <p style={{ color: 'var(--ink-2)' }}>
-        Standalone project scaffold. Auth, boxes and invitations are being built in
-        reviewable chunks. This placeholder confirms the app builds.
-      </p>
-    </main>
+      <div className="row" style={{ marginTop: 20 }}>
+        <Link href="/login"><button>Sign in</button></Link>
+      </div>
+      <p className="dim" style={{ marginTop: 28 }}>Phase 1 — identity &amp; boxes. Content, wallet and rentals come next.</p>
+    </div>
   );
 }
