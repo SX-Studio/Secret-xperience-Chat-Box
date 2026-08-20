@@ -43,7 +43,13 @@ re-checks `active AND now() < expires_at` on every view before issuing a signed 
   - ✅ Chunk 1: project scaffold + migrations `0001`–`0005` (account, account_role, box,
     box_membership, invitation, audit_log, events, app_config) + RLS + lib helpers
     (supabase clients, ids, crypto, config) + tests (ids, crypto).
-  - ⏳ Next: OTP auth (start/verify), then boxes API, then invitations API — each with
+  - ✅ Chunk 2: OTP auth. Migration `0006` (otp_challenge). `lib/auth/*` (adapter +
+    stub sender + otp hash/verify), `lib/session*` (signed cookie), `lib/accounts`
+    (find-or-create; first account bootstraps as platform_operator), `lib/authz`
+    (currentAccount/roles/hasRole), `lib/audit`, `lib/events`, `lib/ratelimit`.
+    Routes: `POST /api/auth/otp/start`, `POST /api/auth/otp/verify`,
+    `POST /api/auth/logout`, `GET /api/me`. Tests (session, otp) — 15 passing total.
+  - ⏳ Next: boxes API (create box, list mine), then invitations API — each with
     tests + security check.
 - Phase 2 — content upload & processing, blurred feed
 - Phase 3 — wallet, tokens, rental engine, payouts
