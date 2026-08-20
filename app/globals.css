@@ -1,0 +1,16 @@
+:root {
+  --bg: #0c0e13;
+  --ink: #ecedf2;
+  --ink-2: #a6aebc;
+  --ember: #f0764f;
+  --line: #242a34;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+  line-height: 1.6;
+}
+a { color: var(--ember); }
