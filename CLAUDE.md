@@ -49,8 +49,19 @@ re-checks `active AND now() < expires_at` on every view before issuing a signed 
     (currentAccount/roles/hasRole), `lib/audit`, `lib/events`, `lib/ratelimit`.
     Routes: `POST /api/auth/otp/start`, `POST /api/auth/otp/verify`,
     `POST /api/auth/logout`, `GET /api/me`. Tests (session, otp) — 15 passing total.
-  - ⏳ Next: boxes API (create box, list mine), then invitations API — each with
-    tests + security check.
+  - ✅ Chunk 3: boxes API. `lib/boxes` (createBox — operator-only, creator becomes
+    box_admin; listBoxesForAccount; getBoxForAccount; validateBoxName). Routes
+    GET/POST `/api/boxes`, GET `/api/boxes/[id]`.
+  - ✅ Chunk 4: invitations API (closes the Phase 1 loop). `lib/invitations`
+    (generate/hash token, createInvitation — box_admin/operator, phone-bound,
+    72h TTL from app_config; acceptInvitation — session + phone-match required,
+    idempotent upsert of membership + role, single-use). Routes
+    POST `/api/boxes/[id]/invitations`, POST `/api/invitations/[token]/accept`.
+    Invite link returned in `dev` field only while OTP_SENDER=stub. 20 tests total.
+  - **Phase 1 core loop is complete**: operator logs in (OTP) → creates box →
+    invites creator/user → invitee OTP-verifies → accepts → joins box. All audited
+    + events emitted. Migrations `0001`–`0006` live on Supabase.
+  - ⏳ Next (Phase 1 polish, optional): minimal UI for login/invite/box; then Phase 2.
 - Phase 2 — content upload & processing, blurred feed
 - Phase 3 — wallet, tokens, rental engine, payouts
 - Phase 4 — moderation console, AI screening, reports
