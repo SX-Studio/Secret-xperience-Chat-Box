@@ -14,6 +14,7 @@
 create or replace function public.current_account_id()
 returns uuid
 language sql stable
+set search_path = ''   -- pinned to avoid search_path injection (advisor 0011)
 as $$
   select nullif(
     current_setting('request.jwt.claims', true)::jsonb ->> 'account_id',
