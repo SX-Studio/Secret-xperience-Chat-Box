@@ -51,6 +51,8 @@ export default function Dashboard() {
         <button className="ghost sm" onClick={logout}>Sign out</button>
       </div>
 
+      <Wallet />
+
       {isOperator && <CreateBox onCreated={loadBoxes} />}
 
       <h2 style={{ marginTop: 26 }}>Your boxes</h2>
@@ -69,6 +71,76 @@ export default function Dashboard() {
             {canAdmin(b) && <Invite boxId={b.public_id} />}
           </div>
         ))
+      )}
+    </div>
+  );
+}
+
+type Ledger = { type: string; amount_tokens: number; ref_id: string | null; balance_after: number; created_at: string };
+
+function Wallet() {
+  const [balance, setBalance] = useState<number | null>(null);
+  const [ledger, setLedger] = useState<Ledger[]>([]);
+  const [amount, setAmount] = useState('1000');
+  const [busy, setBusy] = useState(false);
+  const [open, setOpen] = useState(false);
+
+  const load = useCallback(async () => {
+    const r = await fetch('/api/wallet');
+    if (r.ok) { const j = await r.json(); setBalance(j.balance); setLedger(j.ledger || []); }
+  }, []);
+  useEffect(() => { load(); }, [load]);
+
+  async function topup() {
+    setBusy(true);
+    try {
+      const r = await fetch('/api/wallet/topup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ amount: Number(amount) }) });
+      const j = await r.json();
+      if (r.ok) { setBalance(j.balance); load(); }
+    } finally { setBusy(false); }
+  }
+
+  return (
+    <div className="card">
+      <div className="between">
+        <div>
+          <div className="dim" style={{ fontWeight: 600 }}>Token wallet</div>
+          <div style={{ fontSize: 30, fontFamily: 'ui-monospace,monospace', color: 'var(--teal)', fontWeight: 700 }}>
+            ◈ {balance ?? '—'}
+          </div>
+          <div className="dim">≈ €{balance != null ? (balance / 100).toFixed(2) : '—'} · 100 tokens = €1</div>
+        </div>
+        <button className="ghost sm" onClick={() => setOpen((o) => !o)}>{open ? 'Hide' : 'Wallet ▾'}</button>
+      </div>
+
+      {open && (
+        <>
+          <hr />
+          <div className="dim" style={{ fontWeight: 600 }}>Add tokens (dev top-up — real purchase comes later)</div>
+          <div className="row" style={{ marginTop: 8, alignItems: 'flex-end' }}>
+            <div style={{ flex: '0 0 160px' }}>
+              <label htmlFor="topup">Tokens</label>
+              <input id="topup" inputMode="numeric" value={amount} onChange={(e) => setAmount(e.target.value.replace(/\D/g, ''))} />
+            </div>
+            <button className="sm" onClick={topup} disabled={busy || !amount}>{busy ? 'Adding…' : 'Add tokens'}</button>
+          </div>
+
+          {ledger.length > 0 && (
+            <>
+              <div className="dim" style={{ fontWeight: 600, margin: '14px 0 6px' }}>Ledger</div>
+              <div style={{ fontSize: 13 }}>
+                {ledger.slice(0, 12).map((e, i) => (
+                  <div key={i} className="between" style={{ padding: '5px 0', borderTop: '1px solid var(--line)' }}>
+                    <span className="dim">{e.type}{e.ref_id ? ` · ${e.ref_id}` : ''}</span>
+                    <span className="mono" style={{ color: e.amount_tokens >= 0 ? 'var(--ok)' : 'var(--ink-2)' }}>
+                      {e.amount_tokens >= 0 ? '+' : ''}{e.amount_tokens} → {e.balance_after}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </>
       )}
     </div>
   );

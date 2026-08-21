@@ -76,7 +76,17 @@ re-checks `active AND now() < expires_at` on every view before issuing a signed 
     link to the feed.
   - **Phase 2 complete.** Migrations `0001`–`0007` live.
   - ⏳ Next: Phase 3 (wallet, tokens, rental engine, payouts).
-- Phase 3 — wallet, tokens, rental engine, payouts
+- **Phase 3 — wallet, tokens, rental engine, payouts** ← in progress
+  - ✅ Chunk 1: wallet + immutable ledger. Migration `0008` (wallet, ledger_entry,
+    earning + `wallet_apply()` SECURITY DEFINER function — atomic, row-locked,
+    idempotent, overspend-proof; EXECUTE revoked from anon/authenticated so only
+    service_role can call it — advisor-flagged, fixed). `lib/wallet` (getBalance,
+    applyWallet via rpc, getLedger, validateTopUpAmount). Routes GET `/api/wallet`,
+    POST `/api/wallet/topup` (dev top-up, gated to OTP_SENDER=stub). Wallet panel in
+    dashboard. Ledger function verified live (idempotency + overspend). 26 tests.
+  - ⏳ Next: rental engine (rent transaction: debit user + credit creator split +
+    24h expires_at from purchase; on-access signed URL), then earnings + payouts.
+- (in progress above) Phase 3 — wallet, tokens, rental engine, payouts
 - Phase 4 — moderation console, AI screening, reports
 
 ## Architecture quirks / patterns
