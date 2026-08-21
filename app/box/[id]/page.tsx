@@ -8,6 +8,7 @@ type FeedItem = {
   description: string | null;
   price_tokens: number;
   creator: string | null;
+  is_owner?: boolean;
   asset_count: number;
   preview_url: string | null;
 };
@@ -133,6 +134,7 @@ function RentableCard({ item, initialExpiry }: { item: FeedItem; initialExpiry: 
     if (r.ok) alert('Reported — thank you. Our team will review it.');
   }
 
+  const owner = !!item.is_owner;
   const isRented = !!expiry;
   return (
     <div className="feed-card">
@@ -143,7 +145,7 @@ function RentableCard({ item, initialExpiry }: { item: FeedItem; initialExpiry: 
           ? <img src={item.preview_url} alt="" loading="lazy" />
           : <div className="feed-noimg" />}
         <div className="feed-lock">
-          {isRented ? <>🔓 Rented · <span className="cd">{fmtCountdown(expiry!)}</span></> : <>🔒 Blurred preview</>}
+          {owner ? <>✦ Your content</> : isRented ? <>🔓 Rented · <span className="cd">{fmtCountdown(expiry!)}</span></> : <>🔒 Blurred preview</>}
         </div>
       </div>
       <div className="feed-body">
@@ -151,12 +153,16 @@ function RentableCard({ item, initialExpiry }: { item: FeedItem; initialExpiry: 
         <div className="dim">{item.creator} · {item.asset_count} photo{item.asset_count === 1 ? '' : 's'}</div>
         <div className="row between" style={{ marginTop: 8 }}>
           <span className="price">◈ {item.price_tokens}</span>
-          {isRented
+          {owner
+            ? <button className="sm" onClick={view} disabled={busy}>{busy ? '…' : url ? 'Refresh' : 'View'}</button>
+            : isRented
             ? <button className="sm" onClick={view} disabled={busy}>{busy ? '…' : url ? 'Refresh' : 'View'}</button>
             : <button className="sm" onClick={rent} disabled={busy}>{busy ? '…' : 'Rent 24h'}</button>}
         </div>
         {err && <div className="msg err" style={{ marginTop: 8 }}>{err}</div>}
-        <button onClick={report} className="ghost" style={{ marginTop: 8, padding: '4px 8px', fontSize: 11, background: 'none', border: 'none', color: 'var(--ink-3)', cursor: 'pointer' }}>⚑ Report</button>
+        {!owner && (
+          <button onClick={report} className="ghost" style={{ marginTop: 8, padding: '4px 8px', fontSize: 11, background: 'none', border: 'none', color: 'var(--ink-3)', cursor: 'pointer' }}>⚑ Report</button>
+        )}
       </div>
     </div>
   );

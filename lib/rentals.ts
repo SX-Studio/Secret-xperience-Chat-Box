@@ -38,21 +38,26 @@ export async function rentContent(userId: string, contentPublicId: string, idemp
 // Authoritative access check → short-lived signed URL for the master. No active,
 // unexpired rental means no URL.
 export async function viewContent(userId: string, contentPublicId: string): Promise<string | null> {
-  const { data: content } = await admin().from('content').select('id, status').eq('public_id', contentPublicId).maybeSingle();
-  // Moderation tie-in: suspended/rejected/deleted content is never viewable, even with
-  // an active rental.
-  if (!content || (content as { status: string }).status !== 'approved') return null;
-  const contentId = (content as { id: string }).id;
+  const { data: content } = await admin().from('content').select('id, status, creator_id').eq('public_id', contentPublicId).maybeSingle();
+  if (!content) return null;
+  const c = content as { id: string; status: string; creator_id: string };
+  const contentId = c.id;
+  const isOwner = c.creator_id === userId;
 
-  const { data: rental } = await admin()
-    .from('rental')
-    .select('id')
-    .eq('user_id', userId)
-    .eq('content_id', contentId)
-    .eq('status', 'active')
-    .gt('expires_at', new Date().toISOString())
-    .maybeSingle();
-  if (!rental) return null;
+  // Creators can always view their own master (no rental needed). Everyone else needs
+  // an active rental AND the content must still be approved (moderation tie-in).
+  if (!isOwner) {
+    if (c.status !== 'approved') return null;
+    const { data: rental } = await admin()
+      .from('rental')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('content_id', contentId)
+      .eq('status', 'active')
+      .gt('expires_at', new Date().toISOString())
+      .maybeSingle();
+    if (!rental) return null;
+  }
 
   const { data: asset } = await admin()
     .from('content_asset')

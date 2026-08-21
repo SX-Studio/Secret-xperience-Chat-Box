@@ -52,6 +52,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
       price_tokens: c.price_tokens,
       created_at: c.created_at,
       creator: c.creator?.public_id ?? null,
+      is_owner: c.creator?.public_id === account.public_id,
       asset_count: c.assets?.length ?? 0,
       preview_url: asset?.preview_path ? publicUrl('preview', asset.preview_path) : null,
     };
