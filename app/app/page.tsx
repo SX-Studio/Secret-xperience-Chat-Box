@@ -64,6 +64,7 @@ export default function Dashboard() {
                 <strong>{b.name}</strong> {b.role && <span className="tag">· {b.role}</span>}
                 <div className="dim"><span className="mono">{b.public_id}</span>{b.description ? ` — ${b.description}` : ''}</div>
               </div>
+              <a href={`/box/${b.public_id}`}><button className="ghost sm">Open feed →</button></a>
             </div>
             {canAdmin(b) && <Invite boxId={b.public_id} />}
           </div>
