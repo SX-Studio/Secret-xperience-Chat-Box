@@ -82,17 +82,6 @@ export default function BoxPage({ params }: { params: { id: string } }) {
         </div>
       )}
 
-      <style>{`
-        .feed-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px;margin-top:8px}
-        .feed-card{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden}
-        .feed-media{position:relative;aspect-ratio:4/5;background:var(--surface-2)}
-        .feed-media img{width:100%;height:100%;object-fit:cover;display:block}
-        .feed-noimg{position:absolute;inset:0;background:linear-gradient(135deg,#2a2340,#141019)}
-        .feed-lock{position:absolute;left:0;right:0;bottom:0;padding:8px 10px;font-size:11px;color:#fff;background:linear-gradient(to top,rgba(6,7,12,.85),transparent)}
-        .feed-body{padding:11px 12px}
-        .price{font-family:ui-monospace,monospace;color:var(--teal);font-weight:600}
-        .cd{font-family:ui-monospace,monospace;font-size:12px;color:var(--teal)}
-      `}</style>
     </div>
   );
 }
