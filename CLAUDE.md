@@ -61,8 +61,17 @@ re-checks `active AND now() < expires_at` on every view before issuing a signed 
   - **Phase 1 core loop is complete**: operator logs in (OTP) → creates box →
     invites creator/user → invitee OTP-verifies → accepts → joins box. All audited
     + events emitted. Migrations `0001`–`0006` live on Supabase.
-  - ⏳ Next (Phase 1 polish, optional): minimal UI for login/invite/box; then Phase 2.
-- Phase 2 — content upload & processing, blurred feed
+- **Phase 2 — content upload & processing, blurred feed** ← in progress
+  - ✅ Chunk 1: content schema. Migration `0007` (content, content_asset + storage
+    buckets: `master` private, `preview` public; RLS deny-by-default). `lib/content`
+    (validate title/price, mime/size limits), `lib/media` (sharp: thumbnail + blurred
+    preview), `lib/storage` (service-role upload + public preview URL). Routes:
+    POST `/api/content` (creator upload → master private + blurred/thumb previews →
+    row; auto-approved in Phase 2, moderation gate is Phase 4), GET
+    `/api/boxes/[id]/feed` (member-gated; returns blurred previews, never master).
+    Tests: validateContentInput/extForMime (24 total). Migration applied to Supabase.
+  - ⏳ Next: upload + feed UI in the dashboard.
+- (done above) Phase 2 — content upload & processing, blurred feed
 - Phase 3 — wallet, tokens, rental engine, payouts
 - Phase 4 — moderation console, AI screening, reports
 
