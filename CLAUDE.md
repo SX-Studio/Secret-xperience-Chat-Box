@@ -70,8 +70,12 @@ re-checks `active AND now() < expires_at` on every view before issuing a signed 
     row; auto-approved in Phase 2, moderation gate is Phase 4), GET
     `/api/boxes/[id]/feed` (member-gated; returns blurred previews, never master).
     Tests: validateContentInput/extForMime (24 total). Migration applied to Supabase.
-  - ⏳ Next: upload + feed UI in the dashboard.
-- (done above) Phase 2 — content upload & processing, blurred feed
+  - ✅ Chunk 2: upload + feed UI. `/box/[id]` page — Drop-content form (image +
+    title + price) for creators/box-admins/operators, and the blurred-preview feed
+    grid for all members (Rent button disabled until Phase 3). Dashboard box cards
+    link to the feed.
+  - **Phase 2 complete.** Migrations `0001`–`0007` live.
+  - ⏳ Next: Phase 3 (wallet, tokens, rental engine, payouts).
 - Phase 3 — wallet, tokens, rental engine, payouts
 - Phase 4 — moderation console, AI screening, reports
 
