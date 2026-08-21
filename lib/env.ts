@@ -16,7 +16,8 @@ export const env = {
   phoneEncryptionKey: () => required('PHONE_ENCRYPTION_KEY'),
   phoneHashKey: () => required('PHONE_HASH_KEY'),
   sessionSecret: () => required('SESSION_SECRET'),
-  otpTtlSeconds: () => Number(process.env.OTP_TTL_SECONDS ?? '300'),
-  otpMaxAttempts: () => Number(process.env.OTP_MAX_ATTEMPTS ?? '5'),
+  // Guard against an empty/invalid env value (e.g. "" -> 0) — always a sane positive.
+  otpTtlSeconds: () => { const n = Number(process.env.OTP_TTL_SECONDS); return Number.isFinite(n) && n > 0 ? n : 300; },
+  otpMaxAttempts: () => { const n = Number(process.env.OTP_MAX_ATTEMPTS); return Number.isFinite(n) && n > 0 ? n : 5; },
   otpSender: () => process.env.OTP_SENDER ?? 'stub',
 };
