@@ -13,29 +13,41 @@ type FeedItem = {
 };
 type Ctx = { canUpload: boolean; boxName: string };
 
+function fmtCountdown(iso: string): string {
+  let s = Math.floor((new Date(iso).getTime() - Date.now()) / 1000);
+  if (s < 0) s = 0;
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+  const p = (n: number) => (n < 10 ? '0' : '') + n;
+  return `${p(h)}:${p(m)}:${p(sec)}`;
+}
+
 export default function BoxPage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const boxId = params.id;
   const [feed, setFeed] = useState<FeedItem[]>([]);
+  const [rented, setRented] = useState<Record<string, string>>({}); // content_public_id -> expires_at
   const [ctx, setCtx] = useState<Ctx>({ canUpload: false, boxName: boxId });
   const [loading, setLoading] = useState(true);
 
   const loadFeed = useCallback(async () => {
-    const r = await fetch(`/api/boxes/${boxId}/feed`);
-    if (r.status === 401) { router.push(`/login?next=/box/${boxId}`); return; }
-    if (r.ok) setFeed((await r.json()).feed || []);
+    const [f, m] = await Promise.all([fetch(`/api/boxes/${boxId}/feed`), fetch('/api/rentals/my')]);
+    if (f.status === 401) { router.push(`/login?next=/box/${boxId}`); return; }
+    if (f.ok) setFeed((await f.json()).feed || []);
+    if (m.ok) {
+      const map: Record<string, string> = {};
+      for (const r of (await m.json()).rentals || []) map[r.content_public_id] = r.expires_at;
+      setRented(map);
+    }
   }, [boxId, router]);
 
   useEffect(() => {
     (async () => {
-      // Figure out if the viewer can upload (creator/box_admin/operator) from /api/me.
       const [meRes, boxRes] = await Promise.all([fetch('/api/me'), fetch(`/api/boxes/${boxId}`)]);
       if (meRes.status === 401) { router.push(`/login?next=/box/${boxId}`); return; }
       const me = await meRes.json();
       const box = boxRes.ok ? (await boxRes.json()).box : null;
       const isOperator = !!me.roles?.some((r: { role: string }) => r.role === 'platform_operator');
-      const canUpload = isOperator || box?.role === 'creator' || box?.role === 'box_admin';
-      setCtx({ canUpload, boxName: box?.name || boxId });
+      setCtx({ canUpload: isOperator || box?.role === 'creator' || box?.role === 'box_admin', boxName: box?.name || boxId });
       await loadFeed();
       setLoading(false);
     })();
@@ -51,7 +63,10 @@ export default function BoxPage({ params }: { params: { id: string } }) {
           <h1 style={{ marginBottom: 2 }}>{ctx.boxName}</h1>
           <div className="dim mono">{boxId}</div>
         </div>
-        <a href="/app"><button className="ghost sm">← Dashboard</button></a>
+        <div className="row">
+          <a href="/rentals"><button className="ghost sm">My rentals</button></a>
+          <a href="/app"><button className="ghost sm">← Dashboard</button></a>
+        </div>
       </div>
 
       {ctx.canUpload && <Upload boxId={boxId} onUploaded={loadFeed} />}
@@ -62,22 +77,7 @@ export default function BoxPage({ params }: { params: { id: string } }) {
       ) : (
         <div className="feed-grid">
           {feed.map((c) => (
-            <div className="feed-card" key={c.public_id}>
-              <div className="feed-media">
-                {c.preview_url
-                  ? <img src={c.preview_url} alt="" loading="lazy" />
-                  : <div className="feed-noimg" />}
-                <div className="feed-lock">🔒 Blurred preview</div>
-              </div>
-              <div className="feed-body">
-                <strong>{c.title}</strong>
-                <div className="dim">{c.creator} · {c.asset_count} photo{c.asset_count === 1 ? '' : 's'}</div>
-                <div className="row between" style={{ marginTop: 8 }}>
-                  <span className="price">◈ {c.price_tokens}</span>
-                  <button className="sm" disabled title="Renting arrives in Phase 3">Rent 24h</button>
-                </div>
-              </div>
-            </div>
+            <RentableCard key={c.public_id} item={c} initialExpiry={rented[c.public_id] || null} />
           ))}
         </div>
       )}
@@ -88,10 +88,78 @@ export default function BoxPage({ params }: { params: { id: string } }) {
         .feed-media{position:relative;aspect-ratio:4/5;background:var(--surface-2)}
         .feed-media img{width:100%;height:100%;object-fit:cover;display:block}
         .feed-noimg{position:absolute;inset:0;background:linear-gradient(135deg,#2a2340,#141019)}
-        .feed-lock{position:absolute;left:0;right:0;bottom:0;padding:8px 10px;font-size:11px;color:#fff;background:linear-gradient(to top,rgba(6,7,12,.8),transparent)}
+        .feed-lock{position:absolute;left:0;right:0;bottom:0;padding:8px 10px;font-size:11px;color:#fff;background:linear-gradient(to top,rgba(6,7,12,.85),transparent)}
         .feed-body{padding:11px 12px}
         .price{font-family:ui-monospace,monospace;color:var(--teal);font-weight:600}
+        .cd{font-family:ui-monospace,monospace;font-size:12px;color:var(--teal)}
       `}</style>
+    </div>
+  );
+}
+
+function RentableCard({ item, initialExpiry }: { item: FeedItem; initialExpiry: string | null }) {
+  const [expiry, setExpiry] = useState<string | null>(initialExpiry);
+  const [url, setUrl] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [, setTick] = useState(0);
+
+  useEffect(() => {
+    if (!expiry) return;
+    const iv = setInterval(() => {
+      if (new Date(expiry).getTime() <= Date.now()) { setExpiry(null); setUrl(null); }
+      else setTick((t) => t + 1);
+    }, 1000);
+    return () => clearInterval(iv);
+  }, [expiry]);
+
+  async function rent() {
+    setBusy(true); setErr(null);
+    try {
+      const r = await fetch(`/api/content/${item.public_id}/rent`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idempotencyKey: `${item.public_id}:${Date.now()}` }),
+      });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error || 'Could not rent');
+      setExpiry(j.expiresAt);
+    } catch (e) { setErr((e as Error).message); } finally { setBusy(false); }
+  }
+
+  async function view() {
+    setBusy(true); setErr(null);
+    try {
+      const r = await fetch(`/api/content/${item.public_id}/view`);
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error || 'Could not open');
+      setUrl(j.url);
+    } catch (e) { setErr((e as Error).message); } finally { setBusy(false); }
+  }
+
+  const isRented = !!expiry;
+  return (
+    <div className="feed-card">
+      <div className="feed-media">
+        {url
+          ? <img src={url} alt={item.title} />
+          : item.preview_url
+          ? <img src={item.preview_url} alt="" loading="lazy" />
+          : <div className="feed-noimg" />}
+        <div className="feed-lock">
+          {isRented ? <>🔓 Rented · <span className="cd">{fmtCountdown(expiry!)}</span></> : <>🔒 Blurred preview</>}
+        </div>
+      </div>
+      <div className="feed-body">
+        <strong>{item.title}</strong>
+        <div className="dim">{item.creator} · {item.asset_count} photo{item.asset_count === 1 ? '' : 's'}</div>
+        <div className="row between" style={{ marginTop: 8 }}>
+          <span className="price">◈ {item.price_tokens}</span>
+          {isRented
+            ? <button className="sm" onClick={view} disabled={busy}>{busy ? '…' : url ? 'Refresh' : 'View'}</button>
+            : <button className="sm" onClick={rent} disabled={busy}>{busy ? '…' : 'Rent 24h'}</button>}
+        </div>
+        {err && <div className="msg err" style={{ marginTop: 8 }}>{err}</div>}
+      </div>
     </div>
   );
 }
@@ -109,20 +177,16 @@ function Upload({ boxId, onUploaded }: { boxId: string; onUploaded: () => void }
     setBusy(true); setMsg(null);
     try {
       const fd = new FormData();
-      fd.set('boxId', boxId);
-      fd.set('title', title);
-      fd.set('price', price);
-      fd.set('file', file);
+      fd.set('boxId', boxId); fd.set('title', title); fd.set('price', price); fd.set('file', file);
       const r = await fetch('/api/content', { method: 'POST', body: fd });
       const j = await r.json();
       if (!r.ok) throw new Error(j.error || 'Upload failed');
       setMsg({ kind: 'ok', text: `Posted ${j.content.public_id}` });
       setTitle(''); setFile(null);
-      (document.getElementById(`file-${boxId}`) as HTMLInputElement | null)?.value && ((document.getElementById(`file-${boxId}`) as HTMLInputElement).value = '');
+      const el = document.getElementById(`file-${boxId}`) as HTMLInputElement | null;
+      if (el) el.value = '';
       onUploaded();
-    } catch (err) {
-      setMsg({ kind: 'err', text: (err as Error).message });
-    } finally { setBusy(false); }
+    } catch (err) { setMsg({ kind: 'err', text: (err as Error).message }); } finally { setBusy(false); }
   }
 
   return (

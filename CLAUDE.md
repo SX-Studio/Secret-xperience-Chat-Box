@@ -84,8 +84,18 @@ re-checks `active AND now() < expires_at` on every view before issuing a signed 
     applyWallet via rpc, getLedger, validateTopUpAmount). Routes GET `/api/wallet`,
     POST `/api/wallet/topup` (dev top-up, gated to OTP_SENDER=stub). Wallet panel in
     dashboard. Ledger function verified live (idempotency + overspend). 26 tests.
-  - ⏳ Next: rental engine (rent transaction: debit user + credit creator split +
-    24h expires_at from purchase; on-access signed URL), then earnings + payouts.
+  - ✅ Chunk 2: rental engine (the heart). Migration `0009` (rental table + partial
+    unique one-active-per-user+content; `rent_content()` SECURITY DEFINER — atomic
+    debit via wallet_apply + earning split + rental insert; EXECUTE locked to
+    service_role). Timer anchored to purchase: `expires_at = now()+rental_hours`.
+    `lib/rentals` (rentContent, viewContent → on-access signed URL of the master,
+    listMyRentals). Routes POST `/api/content/[id]/rent`, GET
+    `/api/content/[id]/view`, GET `/api/rentals/my`. UI: feed Rent button works →
+    unlock via signed URL + live countdown; `/rentals` page. Verified live: 250
+    debit → 750, 80/20 split, ~24h expiry, idempotent re-rent (no double charge).
+    Core loop DROP→DISCOVER→RENT→EXPIRE complete. 26 tests; advisor clean.
+  - ⏳ Next: creator earnings dashboard + payout requests (€50 threshold) + the
+    expiry sweep job (on-access check already enforces expiry).
 - (in progress above) Phase 3 — wallet, tokens, rental engine, payouts
 - Phase 4 — moderation console, AI screening, reports
 
