@@ -136,6 +136,14 @@ function RentableCard({ item, initialExpiry }: { item: FeedItem; initialExpiry: 
     } catch (e) { setErr((e as Error).message); } finally { setBusy(false); }
   }
 
+  async function report() {
+    const reason = window.prompt('Why are you reporting this content? (3–80 chars)');
+    if (!reason) return;
+    const r = await fetch('/api/reports', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contentId: item.public_id, reason }) });
+    setErr(r.ok ? null : ((await r.json()).error || 'Could not report'));
+    if (r.ok) alert('Reported — thank you. Our team will review it.');
+  }
+
   const isRented = !!expiry;
   return (
     <div className="feed-card">
@@ -159,6 +167,7 @@ function RentableCard({ item, initialExpiry }: { item: FeedItem; initialExpiry: 
             : <button className="sm" onClick={rent} disabled={busy}>{busy ? '…' : 'Rent 24h'}</button>}
         </div>
         {err && <div className="msg err" style={{ marginTop: 8 }}>{err}</div>}
+        <button onClick={report} className="ghost" style={{ marginTop: 8, padding: '4px 8px', fontSize: 11, background: 'none', border: 'none', color: 'var(--ink-3)', cursor: 'pointer' }}>⚑ Report</button>
       </div>
     </div>
   );

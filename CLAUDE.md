@@ -97,7 +97,19 @@ re-checks `active AND now() < expires_at` on every view before issuing a signed 
   - ⏳ Next: creator earnings dashboard + payout requests (€50 threshold) + the
     expiry sweep job (on-access check already enforces expiry).
 - (in progress above) Phase 3 — wallet, tokens, rental engine, payouts
-- Phase 4 — moderation console, AI screening, reports
+- **Phase 4 — moderation console, AI screening, reports** ← in progress
+  - ✅ Chunk 1: moderation backbone. Migration `0010` (moderation_case, report; RLS
+    deny-by-default). `lib/moderation` (screenImage stub → low risk; createModerationCase;
+    decideContent approve/reject/suspend/delete; listModerationQueue;
+    moderationOriginalUrl — signed master URL, audited). `lib/reports` (createReport,
+    listReports, resolveReport, validateReportReason). Upload now screens → low risk
+    auto-approves, else status 'pending' (moderation case created). viewContent tie-in:
+    only 'approved' content is viewable even with an active rental. Routes: moderation
+    queue/decision/original/reports/resolve (moderator-gated), POST /api/reports (any
+    user). UI: `/moderation` console (content queue + reports, view original, decision
+    buttons), dashboard link, feed "⚑ Report" button. 28 tests; advisor clean.
+  - ⏳ Next (finish the product): Phase 3 leftovers — creator earnings dashboard +
+    payout requests (€50) + pg_cron expiry sweep; then account restrict/suspend in console.
 
 ## Architecture quirks / patterns
 - **All Phase 1 DB access via server routes using the service-role client** (`lib/supabase/admin.ts`).

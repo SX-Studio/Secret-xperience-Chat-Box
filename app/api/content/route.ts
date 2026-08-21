@@ -7,6 +7,7 @@ import { uploadObject, publicUrl } from '@/lib/storage';
 import { publicId } from '@/lib/ids';
 import { writeAudit } from '@/lib/audit';
 import { emit } from '@/lib/events';
+import { screenImage, createModerationCase } from '@/lib/moderation';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -62,10 +63,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: 'Could not read that image' }, { status: 400 });
   }
 
+  // AI safety screen (stub). Low risk auto-approves; anything else waits for a human.
+  const screen = await screenImage(buf, mime);
+  const autoApprove = screen.riskLevel === 'low';
+
   const description = form.get('description') ? String(form.get('description')).trim() : null;
   const { data: content, error: cErr } = await admin()
     .from('content')
-    .insert({ public_id: publicId('CNT'), box_id: boxId, creator_id: account.id, title, description, price_tokens: price, status: 'approved' })
+    .insert({ public_id: publicId('CNT'), box_id: boxId, creator_id: account.id, title, description, price_tokens: price, status: autoApprove ? 'approved' : 'pending' })
     .select('id, public_id')
     .single();
   if (cErr || !content) return NextResponse.json({ ok: false, error: 'Could not save content' }, { status: 500 });
@@ -94,12 +99,13 @@ export async function POST(req: NextRequest) {
     position: 0,
   });
 
-  await writeAudit({ actorId: account.id, action: 'content.uploaded', targetType: 'content', targetId: content.public_id, metadata: { box_id: boxId } });
+  await createModerationCase(content.id, screen, autoApprove);
+  await writeAudit({ actorId: account.id, action: 'content.uploaded', targetType: 'content', targetId: content.public_id, metadata: { box_id: boxId, risk: screen.riskLevel } });
   await emit('CONTENT_UPLOADED', { content_id: content.id, box_id: boxId });
-  await emit('CONTENT_APPROVED', { content_id: content.id }); // Phase 2 auto-approves; Phase 4 adds review
+  if (autoApprove) await emit('CONTENT_APPROVED', { content_id: content.id });
 
   return NextResponse.json(
-    { ok: true, content: { public_id: content.public_id, preview_url: publicUrl('preview', `${base}/blur.jpg`) } },
+    { ok: true, content: { public_id: content.public_id, status: autoApprove ? 'approved' : 'pending', preview_url: publicUrl('preview', `${base}/blur.jpg`) } },
     { status: 201 }
   );
 }

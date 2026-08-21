@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: (e as Error).message }, { status: 400 });
   }
 
-  const ref = publicId('CNT').replace('CNT', 'TOP'); // unique dev top-up reference
+  const ref = publicId('TOP'); // unique dev top-up reference
   const balance = await applyWallet({
     accountId: account.id,
     amount,

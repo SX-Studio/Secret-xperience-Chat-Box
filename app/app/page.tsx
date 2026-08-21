@@ -48,7 +48,13 @@ export default function Dashboard() {
             )) : <span className="dim">No roles yet</span>}
           </div>
         </div>
-        <button className="ghost sm" onClick={logout}>Sign out</button>
+        <div className="row">
+          <a href="/rentals"><button className="ghost sm">My rentals</button></a>
+          {(isOperator || me?.roles.some((r) => r.role === 'moderator')) && (
+            <a href="/moderation"><button className="ghost sm">🛡 Moderation</button></a>
+          )}
+          <button className="ghost sm" onClick={logout}>Sign out</button>
+        </div>
       </div>
 
       <Wallet />

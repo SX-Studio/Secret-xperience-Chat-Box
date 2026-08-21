@@ -38,8 +38,10 @@ export async function rentContent(userId: string, contentPublicId: string, idemp
 // Authoritative access check → short-lived signed URL for the master. No active,
 // unexpired rental means no URL.
 export async function viewContent(userId: string, contentPublicId: string): Promise<string | null> {
-  const { data: content } = await admin().from('content').select('id').eq('public_id', contentPublicId).maybeSingle();
-  if (!content) return null;
+  const { data: content } = await admin().from('content').select('id, status').eq('public_id', contentPublicId).maybeSingle();
+  // Moderation tie-in: suspended/rejected/deleted content is never viewable, even with
+  // an active rental.
+  if (!content || (content as { status: string }).status !== 'approved') return null;
   const contentId = (content as { id: string }).id;
 
   const { data: rental } = await admin()
