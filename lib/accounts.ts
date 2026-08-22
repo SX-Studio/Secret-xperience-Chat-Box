@@ -26,6 +26,27 @@ export async function findAccountByPhoneHash(hash: string): Promise<Account | nu
 
 // Find the account for a verified phone, or create it. The very first account in the
 // system is bootstrapped as platform_operator so there's someone who can create boxes.
+// Grant platform_operator to an account whose phone is on the admin allowlist.
+// Idempotent — safe to call on every login. Matched by keyed HMAC (no plaintext).
+export async function ensureOperatorIfAllowlisted(accountId: string, hash: string): Promise<void> {
+  const { data: allow } = await admin()
+    .from('admin_phone_allowlist')
+    .select('phone_hash')
+    .eq('phone_hash', hash)
+    .maybeSingle();
+  if (!allow) return;
+  const { data: role } = await admin()
+    .from('account_role')
+    .select('id')
+    .eq('account_id', accountId)
+    .eq('role', 'platform_operator')
+    .is('box_id', null)
+    .maybeSingle();
+  if (role) return;
+  await admin().from('account_role').insert({ account_id: accountId, role: 'platform_operator', box_id: null });
+  await writeAudit({ actorId: accountId, action: 'account.operator_from_allowlist', targetType: 'account', targetId: accountId });
+}
+
 export async function findOrCreateAccount(e164: string): Promise<{ account: Account; isNew: boolean }> {
   const hash = phoneHash(e164);
   const existing = await findAccountByPhoneHash(hash);
@@ -33,6 +54,7 @@ export async function findOrCreateAccount(e164: string): Promise<{ account: Acco
     if (!existing.phone_verified_at) {
       await admin().from('account').update({ phone_verified_at: new Date().toISOString() }).eq('id', existing.id);
     }
+    await ensureOperatorIfAllowlisted(existing.id, hash);
     return { account: existing, isNew: false };
   }
 
@@ -56,5 +78,6 @@ export async function findOrCreateAccount(e164: string): Promise<{ account: Acco
   }
   await writeAudit({ actorId: account.id, action: 'account.created', targetType: 'account', targetId: account.public_id });
   await emit('ACCOUNT_CREATED', { account_id: account.id, public_id: account.public_id });
+  await ensureOperatorIfAllowlisted(account.id, hash);
   return { account, isNew: true };
 }
