@@ -20,4 +20,8 @@ export const env = {
   otpTtlSeconds: () => { const n = Number(process.env.OTP_TTL_SECONDS); return Number.isFinite(n) && n > 0 ? n : 300; },
   otpMaxAttempts: () => { const n = Number(process.env.OTP_MAX_ATTEMPTS); return Number.isFinite(n) && n > 0 ? n : 5; },
   otpSender: () => process.env.OTP_SENDER ?? 'stub',
+  // WebAuthn (admin fingerprint). RP ID must be the registrable domain; origin the
+  // full https origin. Local dev falls back to localhost.
+  rpId: () => process.env.RP_ID ?? 'localhost',
+  appOrigin: () => process.env.APP_ORIGIN ?? 'http://localhost:3000',
 };
