@@ -104,3 +104,11 @@ export async function listMyRentals(userId: string): Promise<MyRental[]> {
     };
   });
 }
+
+// Scheduled expiry sweep — flips active rentals whose timer has passed. Access
+// checks (viewContent) already enforce expiry lazily; this keeps listings honest.
+export async function expireRentals(): Promise<number> {
+  const { data, error } = await admin().rpc('expire_rentals');
+  if (error) throw new Error(error.message);
+  return (data as number) ?? 0;
+}

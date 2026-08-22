@@ -24,4 +24,5 @@ export const env = {
   // full https origin. Local dev falls back to localhost.
   rpId: () => process.env.RP_ID ?? 'localhost',
   appOrigin: () => process.env.APP_ORIGIN ?? 'http://localhost:3000',
+  cronSecret: () => process.env.CRON_SECRET ?? '',
 };
