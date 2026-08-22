@@ -1,5 +1,5 @@
 'use client';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 
 export type BoxStat = {
   box_id: string;
@@ -14,31 +14,21 @@ export type BoxStat = {
   platform_tokens: number;
 };
 
-// "Various groups / Box Page": searchable row of box-group cards; click a card to
-// expand its per-box performance (in / out / total / earning / users) — the
-// wireframe's right-click "quick overview" made a tap-to-expand for touch.
-export default function AdminBoxes({ boxes }: { boxes: BoxStat[] }) {
-  const [q, setQ] = useState('');
-  const [open, setOpen] = useState<string | null>(null);
+const eur = (tokens: number) => `€${(tokens / 100).toFixed(2)}`; // 100 tokens = €1
 
-  const filtered = useMemo(() => {
-    const s = q.trim().toLowerCase();
-    if (!s) return boxes;
-    return boxes.filter((b) => b.name.toLowerCase().includes(s) || b.public_id.toLowerCase().includes(s));
-  }, [q, boxes]);
+// "Various groups / Box Page": box-group cards, each showing a € earnings chip on
+// the face; tap to expand per-box performance (in / out / total / earning / users).
+export default function AdminBoxes({ boxes }: { boxes: BoxStat[] }) {
+  const [open, setOpen] = useState<string | null>(null);
 
   return (
     <div>
-      <div className="between" style={{ margin: '4px 0 8px', alignItems: 'center' }}>
-        <strong>Box groups</strong>
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="🔍 Search boxes…" style={{ maxWidth: 220 }} />
-      </div>
-
-      {filtered.length === 0 ? (
-        <div className="card"><p className="dim" style={{ margin: 0 }}>No boxes.</p></div>
+      <strong>Box groups</strong>
+      {boxes.length === 0 ? (
+        <div className="card" style={{ marginTop: 8 }}><p className="dim" style={{ margin: 0 }}>No boxes.</p></div>
       ) : (
-        <div className="row" style={{ flexWrap: 'wrap', gap: 10 }}>
-          {filtered.map((b) => {
+        <div className="row" style={{ flexWrap: 'wrap', gap: 10, marginTop: 8 }}>
+          {boxes.map((b) => {
             const isOpen = open === b.box_id;
             return (
               <div className="card" key={b.box_id} style={{ flex: '1 1 220px', minWidth: 220, cursor: 'pointer' }}
@@ -47,7 +37,10 @@ export default function AdminBoxes({ boxes }: { boxes: BoxStat[] }) {
                   <strong>{b.name}</strong>
                   <span className="pill">{b.status}</span>
                 </div>
-                <div className="dim mono" style={{ fontSize: 11 }}>{b.public_id}</div>
+                <div className="between" style={{ marginTop: 4 }}>
+                  <span className="dim mono" style={{ fontSize: 11 }}>{b.public_id}</span>
+                  <span className="pill mono" style={{ background: 'var(--gold,#a9762a)', color: '#fff' }}>{eur(b.tokens_in)}</span>
+                </div>
                 <div className="row" style={{ gap: 12, marginTop: 8, fontSize: 13 }}>
                   <span>👤 {b.users}</span>
                   <span>🖼 {b.drops}</span>
@@ -55,11 +48,11 @@ export default function AdminBoxes({ boxes }: { boxes: BoxStat[] }) {
                 </div>
                 {isOpen && (
                   <div style={{ marginTop: 10, borderTop: '1px solid var(--line,#2a2a2a)', paddingTop: 8, fontSize: 13 }}>
-                    <Row label="In (tokens)" value={b.tokens_in} />
-                    <Row label="Creator earning" value={b.creator_tokens} />
-                    <Row label="Platform (out)" value={b.platform_tokens} />
-                    <Row label="Total drops" value={b.drops} />
-                    <Row label="Users" value={b.users} />
+                    <Row label="In (tokens)" value={String(b.tokens_in)} />
+                    <Row label="Out — platform" value={String(b.platform_tokens)} />
+                    <Row label="Earning — creator" value={String(b.creator_tokens)} />
+                    <Row label="Total drops" value={String(b.drops)} />
+                    <Row label="Users" value={String(b.users)} />
                   </div>
                 )}
               </div>
@@ -71,7 +64,7 @@ export default function AdminBoxes({ boxes }: { boxes: BoxStat[] }) {
   );
 }
 
-function Row({ label, value }: { label: string; value: number }) {
+function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="between" style={{ padding: '2px 0' }}>
       <span className="dim">{label}</span>
